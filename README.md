@@ -1,10 +1,5 @@
-# go-rollercoaster-api
-
-> A simple REST API built for the kubucation YouTube channel
-
-* No third-party packages/dependencies
-* Used in the "How to use curl as an HTTP Client" video
-* Building of this API available as a [video](https://www.youtube.com/watch?v=2v11Ym6Ct9Q)
+# go-api-practice
+This project stasted as an exercise froked from [Kubucation]/(https://github.com/kubucation/go-rollercoaster-api)
 
 ## Requirements
 
@@ -20,14 +15,13 @@ requirements:
 
 ### Data Types
 
-A coaster object should look like this:
+A recipe object should look like this:
 ```json
 {
   "id": "someid",
-  "name": "name of the coaster",
-  "inPark": "the amusement park the ride is in",
-  "manufacturer": "name of the manufacturer",
-  "height": 27,
+  "name": "name of the recipe",
+  "ingredients": "a single string of all ingredients",
+  "instructions": "a single string of all instructions",
 }
 ```
 
