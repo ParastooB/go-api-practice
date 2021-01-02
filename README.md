@@ -6,12 +6,11 @@ This project stasted as an exercise froked from [Kubucation]/(https://github.com
 To be able to show the desired features of curl this REST API must match a few
 requirements:
 
-* [x] `GET /coasters` returns list of coasters as JSON
-* [x] `GET /coasters/{id}` returns details of specific coaster as JSON
-* [x] `POST /coasters` accepts a new coaster to be added
-* [x] `POST /coasters` returns status 415 if content is not `application/json`
-* [x] `GET /admin` requires basic auth
-* [x] `GET /coasters/random` redirects (Status 302) to a random coaster
+* [x] `GET /recipes` returns list of recipe as JSON
+* [x] `GET /recipes/{id}` returns details of specific recipe as JSON
+* [x] `POST /recipes` accepts a new recipe to be added
+* [x] `DELETE /recipes/{id}` deletes the recipe with the given id 
+* [x] `UPDATE /recipes/{id}` updates all the fields of the recipe with the given id 
 
 ### Data Types
 
@@ -24,7 +23,14 @@ A recipe object should look like this:
   "instructions": "a single string of all instructions",
 }
 ```
-
+### Useful Curl Commands
+```console
+curl localhost:8080/recipes
+curl localhost:8080/recipes/id1 -X DELETE
+curl localhost:8080/recipes -X GET | jq
+curl localhost:8080/recipes/id1 -X UPDATE -d '{"Name": "Chicken Stew","Instructions":"X","Ingredients":"Y"}' -H "Content-Type: application/json"
+curl localhost:8080/recipes -X POST -d '{"name": " Chicken Stew ","instructions":"mix, cook, stir, shred, garnish, serve","Ingredients":"butter,carrot, celery, salt, black pepper, garlic, flour, chicken, thyme, bay leaf, potato, chicken broth, parsley"}' -H "Content-Type: application/json"
+```
 ### Persistence
 
 There is no persistence, a temporary in-mem story is fine.
