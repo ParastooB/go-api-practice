@@ -1,3 +1,3 @@
-module github.com/kubucation/go-rollercoaster-api
+module go-api-practice
 
-go 1.14
+go 1.13

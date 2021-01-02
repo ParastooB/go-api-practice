@@ -2,36 +2,37 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"os"
-	"strings"
 	"sync"
+	"io/ioutil"
 	"time"
+	"fmt"
+	"strings"
 )
 
-type Coaster struct {
-	Name         string `json:"name"`
-	Manufacturer string `json:"manufacturer"`
-	ID           string `json:"id"`
-	InPark       string `json:"inPark"`
-	Height       int    `json:"height"`
+type Recipe struct {
+	Name			string `json:"name"`
+	Ingredients		string `json:"ingredients"`
+	Instructions	string `json:"instructions"`
+	ID				string `json:"id"`
 }
 
-type coasterHandlers struct {
-	sync.Mutex
-	store map[string]Coaster
+type recipesHandlers struct {
+	//concurrent access handling
+	sync.Mutex 
+
+	// map of all recipes 
+	store map[string] Recipe
 }
 
-func (h *coasterHandlers) coasters(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
+// Handles general operations
+func (h *recipesHandlers) recipes (w http.ResponseWriter, r *http.Request){
+	switch r.Method{
 	case "GET":
-		h.get(w, r)
+		h.get(w,r)
 		return
 	case "POST":
-		h.post(w, r)
+		h.post(w,r)
 		return
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -40,74 +41,91 @@ func (h *coasterHandlers) coasters(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *coasterHandlers) get(w http.ResponseWriter, r *http.Request) {
-	coasters := make([]Coaster, len(h.store))
+// Handles individual operations
+func (h *recipesHandlers) singleRecipe (w http.ResponseWriter, r *http.Request){
+	switch r.Method{
+	case "GET":
+		h.getRecipe(w,r)
+		return
+	case "UPDATE":
+		h.updateRecipe(w,r)
+		return
+	case "DELETE":
+		h.deleteRecipe(w,r)
+		return
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte("method not allowed"))
+		return
+	}
+}
 
+// Get all recipes 
+func (h *recipesHandlers) get(w http.ResponseWriter, r *http.Request){
+	recipes := make([]Recipe,len(h.store))
+	
+	// handle concurrent access by locking
 	h.Lock()
-	i := 0
-	for _, coaster := range h.store {
-		coasters[i] = coaster
+	i:= 0
+	for _, recipe := range h.store{
+		recipes[i] = recipe
 		i++
 	}
 	h.Unlock()
 
-	jsonBytes, err := json.Marshal(coasters)
+	jsonBytes, err := json.Marshal(recipes)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}
 
-	w.Header().Add("content-type", "application/json")
+	w.Header().Add("content-type", "application/server")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonBytes)
 }
 
-func (h *coasterHandlers) getRandomCoaster(w http.ResponseWriter, r *http.Request) {
-	ids := make([]string, len(h.store))
-	h.Lock()
-	i := 0
-	for id := range h.store {
-		ids[i] = id
-		i++
-	}
-	defer h.Unlock()
+// Add a recipe
+func (h *recipesHandlers) post(w http.ResponseWriter, r *http.Request){
+	bodyBytes, err := ioutil.ReadAll(r.Body)
 
-	var target string
-	if len(ids) == 0 {
-		w.WriteHeader(http.StatusNotFound)
+	defer r.Body.Close()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 		return
-	} else if len(ids) == 1 {
-		target = ids[0]
-	} else {
-		rand.Seed(time.Now().UnixNano())
-		target = ids[rand.Intn(len(ids))]
 	}
 
-	w.Header().Add("location", fmt.Sprintf("/coasters/%s", target))
-	w.WriteHeader(http.StatusFound)
+	var recipe Recipe
+	err = json.Unmarshal(bodyBytes, &recipe)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	recipe.ID = fmt.Sprintf("%d", time.Now().UnixNano())
+	h.Lock()
+	h.store[recipe.ID] = recipe
+	defer h.Unlock()
 }
 
-func (h *coasterHandlers) getCoaster(w http.ResponseWriter, r *http.Request) {
+// Get a specific recipe with ID
+func (h *recipesHandlers) getRecipe(w http.ResponseWriter, r *http.Request){
 	parts := strings.Split(r.URL.String(), "/")
 	if len(parts) != 3 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	if parts[2] == "random" {
-		h.getRandomCoaster(w, r)
-		return
-	}
-
 	h.Lock()
-	coaster, ok := h.store[parts[2]]
+	recipe, ok := h.store[parts[2]]
 	h.Unlock()
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	jsonBytes, err := json.Marshal(coaster)
+	jsonBytes, err := json.Marshal(recipe)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -118,7 +136,36 @@ func (h *coasterHandlers) getCoaster(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
-func (h *coasterHandlers) post(w http.ResponseWriter, r *http.Request) {
+// Delete a specific recipe with ID
+func (h *recipesHandlers) deleteRecipe(w http.ResponseWriter, r *http.Request){
+	parts := strings.Split(r.URL.String(), "/")
+	if len(parts) != 3 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	h.Lock()
+	_, ok := h.store[parts[2]]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	delete(h.store,parts[2])
+	h.Unlock()
+
+	w.Header().Add("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+
+// Update a specific recipe but doesn't allow one field manipulation
+// TODO: to improve, we could only give the change the the rest of JSON should remain the same
+func (h *recipesHandlers) updateRecipe(w http.ResponseWriter, r *http.Request){
+	parts := strings.Split(r.URL.String(), "/")
+	if len(parts) != 3 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	bodyBytes, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -127,65 +174,46 @@ func (h *coasterHandlers) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ct := r.Header.Get("content-type")
-	if ct != "application/json" {
-		w.WriteHeader(http.StatusUnsupportedMediaType)
-		w.Write([]byte(fmt.Sprintf("need content-type 'application/json', but got '%s'", ct)))
-		return
-	}
-
-	var coaster Coaster
-	err = json.Unmarshal(bodyBytes, &coaster)
+	var recipe Recipe
+	err = json.Unmarshal(bodyBytes, &recipe)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
 	}
 
-	coaster.ID = fmt.Sprintf("%d", time.Now().UnixNano())
 	h.Lock()
-	h.store[coaster.ID] = coaster
-	defer h.Unlock()
-}
-
-func newCoasterHandlers() *coasterHandlers {
-	return &coasterHandlers{
-		store: map[string]Coaster{},
-	}
-
-}
-
-type adminPortal struct {
-	password string
-}
-
-func newAdminPortal() *adminPortal {
-	password := os.Getenv("ADMIN_PASSWORD")
-	if password == "" {
-		panic("required env var ADMIN_PASSWORD not set")
-	}
-
-	return &adminPortal{password: password}
-}
-
-func (a adminPortal) handler(w http.ResponseWriter, r *http.Request) {
-	user, pass, ok := r.BasicAuth()
-	if !ok || user != "admin" || pass != a.password {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("401 - unauthorized"))
+	_, ok := h.store[parts[2]]
+	h.Unlock()
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	w.Write([]byte("<html><h1>Super secret admin portal</h1></html>"))
+	recipe.ID = parts[2]
+	h.Lock()
+	h.store[parts[2]] = recipe
+	defer h.Unlock()
+}
+
+func newRecipesHandlers() *recipesHandlers{
+	return &recipesHandlers{
+		store: map[string]Recipe{
+			"id1": Recipe{
+				Name: "Honey Garlic Glazed Salmon",
+				Instructions: "whisk, heat,season, cook, flip, add, garnish, serve",
+				Ingredients: "honey, soy sauce, lemon juice, red pepper, olive oil, salmon, salt, black pepper, garlic , lemon",
+				ID: "id1",
+			},
+		},
+	}
 }
 
 func main() {
-	admin := newAdminPortal()
-	coasterHandlers := newCoasterHandlers()
-	http.HandleFunc("/coasters", coasterHandlers.coasters)
-	http.HandleFunc("/coasters/", coasterHandlers.getCoaster)
-	http.HandleFunc("/admin", admin.handler)
-	err := http.ListenAndServe(":8080", nil)
+	recipesHandlers := newRecipesHandlers()
+	http.HandleFunc("/recipes", recipesHandlers.recipes)
+	http.HandleFunc("/recipes/", recipesHandlers.singleRecipe)
+	err:= http.ListenAndServe(":8080", nil)
 	if err != nil {
 		panic(err)
 	}
