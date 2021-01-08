@@ -1,5 +1,5 @@
 # go-api-practice
-This project stasted as an exercise froked from [Kubucation]/(https://github.com/kubucation/go-rollercoaster-api)
+This project stasted as an exercise froked from [Kubucation](https://github.com/kubucation/go-rollercoaster-api)
 
 ## Requirements
 
@@ -28,7 +28,7 @@ Clone the repository and in the folder run the following command.
 ```console
 go run server.go
 ```
-You will need [Go]/(https://golang.org/doc/install) installed before you can run this code. If you desire, you could install [cURL]/(https://curl.se/) and use it for testing instead of a web browser.
+You will need [Go](https://golang.org/doc/install) installed before you can run this code. If you desire, you could install [cURL](https://curl.se/) and use it for testing instead of a web browser.
 
 ### Useful Curl Commands
 ```console
