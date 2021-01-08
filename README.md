@@ -23,6 +23,13 @@ A recipe object should look like this:
   "instructions": "a single string of all instructions",
 }
 ```
+### How to Run
+Clone the repository and in the folder run the following command.
+```console
+go run server.go
+```
+You will need [Go]/(https://golang.org/doc/install) installed before you can run this code. If you desire, you could install [cURL]/(https://curl.se/) and use it for testing instead of a web browser.
+
 ### Useful Curl Commands
 ```console
 curl localhost:8080/recipes
