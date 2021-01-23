@@ -146,10 +146,13 @@ func (h *recipesHandlers) deleteRecipe(w http.ResponseWriter, r *http.Request){
 
 	h.Lock()
 	_, ok := h.store[parts[2]]
+	h.Unlock()
+	fmt.Sprintf("%s", h.store[parts[2]])
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	h.Lock()
 	delete(h.store,parts[2])
 	h.Unlock()
 
